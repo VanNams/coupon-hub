@@ -86,6 +86,22 @@ async function saveCoupons(
   return added;
 }
 
+export async function deleteOldCoupons(): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 10);
+
+  const deleted = await prisma.coupon.deleteMany({
+    where: { createdAt: { lt: cutoff } },
+  });
+
+  for (const store of await prisma.store.findMany()) {
+    const count = await prisma.coupon.count({ where: { storeId: store.id } });
+    await prisma.store.update({ where: { id: store.id }, data: { couponCount: count } });
+  }
+
+  return deleted.count;
+}
+
 export async function runAllCrawlers(): Promise<CrawlerResult[]> {
   const results: CrawlerResult[] = [];
 

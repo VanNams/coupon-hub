@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runAllCrawlers } from "@/lib/crawlers";
+import { runAllCrawlers, deleteOldCoupons } from "@/lib/crawlers";
 
 export const maxDuration = 60;
 
@@ -11,11 +11,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const results = await runAllCrawlers();
+  const [results, deletedCount] = await Promise.all([
+    runAllCrawlers(),
+    deleteOldCoupons(),
+  ]);
 
   return NextResponse.json({
     success: true,
     timestamp: new Date().toISOString(),
     results,
+    deletedOldCoupons: deletedCount,
   });
 }

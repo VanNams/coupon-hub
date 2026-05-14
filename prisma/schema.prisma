@@ -72,3 +72,10 @@ model Vote {
 
   @@unique([couponId, ip])
 }
+
+model CronConfig {
+  id        String   @id @default("default")
+  schedule  String   @default("0 0 * * *")
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
