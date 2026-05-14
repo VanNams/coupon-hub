@@ -1,65 +1,96 @@
-import Image from "next/image";
+import prisma from "@/lib/prisma";
+import CouponCard from "@/components/CouponCard";
+import StoreCard from "@/components/StoreCard";
+import JsonLd from "@/components/JsonLd";
+import { jsonLdHowTo, jsonLdFAQ } from "@/lib/seo";
 
-export default function Home() {
+export const revalidate = 300;
+
+export default async function HomePage() {
+  const referenceDate = new Date();
+
+  const [stores, latestCoupons] = await Promise.all([
+    prisma.store.findMany({
+      where: { isActive: true },
+      orderBy: { couponCount: "desc" },
+    }),
+    prisma.coupon.findMany({
+      where: { endDate: { gte: referenceDate } },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+      include: { store: true },
+    }),
+  ]);
+  const referenceDateIso = referenceDate.toISOString();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <JsonLd
+        data={jsonLdHowTo([
+          "Tìm mã giảm giá phù hợp với nhu cầu",
+          "Copy mã giảm giá",
+          "Mở ứng dụng/website của shop",
+          "Dán mã tại bước thanh toán",
+          "Xác nhận giảm giá thành công",
+        ])}
+      />
+      <JsonLd
+        data={jsonLdFAQ([
+          {
+            question: "Mã giảm giá có miễn phí không?",
+            answer: "Tất cả mã giảm giá trên CouponHub đều miễn phí.",
+          },
+          {
+            question: "Làm sao biết mã còn hạn?",
+            answer:
+              "Chúng tôi kiểm tra và cập nhật mã giảm giá hàng ngày. Mỗi mã đều có hạn sử dụng hiển thị rõ.",
+          },
+        ])}
+      />
+
+      <section className="mb-12">
+        <h1 className="text-3xl font-bold mb-2">
+          Mã giảm giá mới nhất hôm nay
+        </h1>
+        <p className="text-gray-500 mb-6">
+          Tổng hợp mã giảm giá từ Shopee, Lazada, Tiki, GrabFood và hơn 50
+          thương hiệu. Cập nhật mỗi ngày.
+        </p>
+        <div className="grid gap-3">
+          {latestCoupons.map((coupon) => (
+            <CouponCard
+              key={coupon.id}
+              id={coupon.id}
+              title={coupon.title}
+              code={coupon.code}
+              discount={coupon.discount}
+              condition={coupon.condition}
+              type={coupon.type}
+              endDate={coupon.endDate}
+              referenceDate={referenceDateIso}
+              usageCount={coupon.usageCount}
+              storeName={coupon.store.name}
+              storeSlug={coupon.store.slug}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          ))}
         </div>
-      </main>
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-bold mb-4">Thương hiệu</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          {stores.map((store) => (
+            <StoreCard
+              key={store.id}
+              name={store.name}
+              slug={store.slug}
+              logo={store.logo}
+              color={store.color}
+              couponCount={store.couponCount}
+            />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
